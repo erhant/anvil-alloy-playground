@@ -26,14 +26,10 @@ type CoreFiller = JoinFill<
 type CoreTransport = Http<Client>;
 /// We are using Ethereum network.
 type CoreNetwork = Ethereum;
+type CoreFillProvider =
+    FillProvider<CoreFiller, RootProvider<CoreTransport>, CoreTransport, CoreNetwork>;
 
-impl
-    TokenClient<
-        CoreTransport,
-        FillProvider<CoreFiller, RootProvider<CoreTransport>, CoreTransport, CoreNetwork>,
-        CoreNetwork,
-    >
-{
+impl TokenClient<CoreTransport, CoreFillProvider, CoreNetwork> {
     pub async fn new(wallet: EthereumWallet, url: Url, token: Address) -> Result<Self> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()

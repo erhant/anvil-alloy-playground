@@ -17,27 +17,27 @@ use eyre::Result;
 
 use crate::{TokenClient, ERC20};
 
-impl
-    TokenClient<
-        BoxTransport,
-        FillProvider<
-            JoinFill<
-                JoinFill<
-                    Identity,
-                    JoinFill<
-                        GasFiller,
-                        JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>,
-                    >,
-                >,
-                WalletFiller<EthereumWallet>,
-            >,
-            AnvilProvider<RootProvider<BoxTransport>, BoxTransport>,
-            BoxTransport,
-            Ethereum,
-        >,
-        Ethereum,
-    >
-{
+/// Core fillers are recommended fillers, along with a wallet filler for Ethereum.
+type AnvilFiller = JoinFill<
+    JoinFill<
+        Identity,
+        JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
+    >,
+    WalletFiller<EthereumWallet>,
+>;
+/// We are using HTTP transport, not WebSockets.
+type AnvilTransport = BoxTransport;
+/// We are using Ethereum network.
+type AnvilNetwork = Ethereum;
+
+type AnvilFillProvider = FillProvider<
+    AnvilFiller,
+    AnvilProvider<RootProvider<AnvilTransport>, AnvilTransport>,
+    AnvilTransport,
+    AnvilNetwork,
+>;
+
+impl TokenClient<AnvilTransport, AnvilFillProvider, AnvilNetwork> {
     pub async fn anvil_new(url: Url, token: Address) -> Result<Self> {
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
