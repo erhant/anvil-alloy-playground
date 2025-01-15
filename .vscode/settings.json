@@ -1,0 +1,4 @@
+{
+  // enable all rust-analyzer features
+  "rust-analyzer.cargo.features": "all"
+}

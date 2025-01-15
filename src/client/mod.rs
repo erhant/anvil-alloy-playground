@@ -1,4 +1,6 @@
+#[cfg(feature = "anvil")]
 mod anvil;
+
 mod connect;
 mod core;
 mod token;

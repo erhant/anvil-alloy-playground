@@ -1,3 +1,5 @@
+#![cfg(feature = "anvil")]
+
 use alloy::{
     network::TransactionBuilder,
     primitives::{address, U256},
@@ -12,19 +14,19 @@ const RPC_URL: &str = "https://base-rpc.publicnode.com";
 // Taken from: https://github.com/alloy-rs/alloy/blob/main/crates/provider/src/ext/anvil.rs#L334
 #[tokio::test]
 async fn test_anvil_impersonate_account_stop_impersonating_account() -> eyre::Result<()> {
+    // create a provider, without any `WalletFiller`
     let provider = ProviderBuilder::new()
         .with_recommended_fillers()
-        .on_anvil_with_wallet(); //(|anvil| anvil.fork(RPC_URL));
+        .on_anvil_with_config(|anvil| anvil.fork(RPC_URL));
 
     let impersonate = address!("4209998887776665550000000000000000000006");
     let to = address!("4209998887776665550000000000000000000007");
     let val = U256::from(1337);
     let funding = U256::from(1e18 as u64);
 
+    // we set the balance of an account using Anvil
     provider.anvil_set_balance(impersonate, funding).await?;
-
-    let balance = provider.get_balance(impersonate).await?;
-    assert_eq!(balance, funding);
+    assert_eq!(provider.get_balance(impersonate).await?, funding);
 
     let tx = TransactionRequest::default()
         .with_from(impersonate)
@@ -38,11 +40,7 @@ async fn test_anvil_impersonate_account_stop_impersonating_account() -> eyre::Re
         .anvil_impersonate_account(impersonate)
         .await
         .unwrap();
-    assert!(provider
-        .get_accounts()
-        .await
-        .unwrap()
-        .contains(&impersonate));
+    assert!(provider.get_accounts().await?.contains(&impersonate));
 
     let res = provider
         .send_transaction(tx.clone())

@@ -1,7 +1,9 @@
+#![cfg(feature = "anvil")]
+
 use alloy::{
     network::TransactionBuilder,
     primitives::{address, utils::format_ether, Address, U256},
-    providers::{ext::AnvilApi, Provider, WalletProvider},
+    providers::{ext::AnvilApi, Provider},
     rpc::types::TransactionRequest,
     signers::local::PrivateKeySigner,
 };
@@ -57,20 +59,16 @@ async fn test_anvil_dummy() -> eyre::Result<()> {
     println!("Bal: {}", client.provider.get_balance(dummy_address).await?);
 
     // we will impersonate the dummy account and send its money to zero
-    // client
-    //     .provider
-    //     .anvil_impersonate_account(dummy_address)
-    //     .await?;
-    let tx = TransactionRequest::default()
-        .with_from(dummy_address)
-        .with_to(Address::ZERO)
-        .with_value(U256::from(100000));
-    let tx = client.provider.send_transaction(tx).await?;
+    let tx = client
+        .anvil_impersonated_tx(
+            TransactionRequest::default()
+                .with_from(dummy_address)
+                .with_to(Address::ZERO)
+                .with_value(U256::from(100000)),
+            dummy_address,
+        )
+        .await?;
     let _ = tx.watch().await?;
-    // client
-    //     .provider
-    //     .anvil_stop_impersonating_account(dummy_address)
-    //     .await?;
 
     // print balance after
     println!("Bal: {}", client.provider.get_balance(dummy_address).await?);

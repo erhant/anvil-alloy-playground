@@ -2,18 +2,21 @@
 
 use alloy::{
     network::{Ethereum, EthereumWallet},
+    node_bindings::anvil,
     primitives::Address,
     providers::{
+        ext::AnvilApi,
         fillers::{
             BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller,
             WalletFiller,
         },
         layers::AnvilProvider,
-        Identity, ProviderBuilder, RootProvider,
+        Identity, PendingTransactionBuilder, Provider, ProviderBuilder, RootProvider,
     },
+    rpc::types::TransactionRequest,
     transports::{http::reqwest::Url, BoxTransport},
 };
-use eyre::Result;
+use eyre::{Context, Result};
 
 use crate::{TokenClient, ERC20};
 
@@ -25,7 +28,7 @@ type AnvilFiller = JoinFill<
     >,
     WalletFiller<EthereumWallet>,
 >;
-/// We are using HTTP transport, not WebSockets.
+/// Anvil provider requires a `BoxTransport`.
 type AnvilTransport = BoxTransport;
 /// We are using Ethereum network.
 type AnvilNetwork = Ethereum;
@@ -45,5 +48,24 @@ impl TokenClient<AnvilTransport, AnvilFillProvider, AnvilNetwork> {
         let token = ERC20::new(token, provider.clone());
 
         Ok(Self { provider, token })
+    }
+
+    #[inline]
+    pub async fn anvil_impersonated_tx(
+        &self,
+        tx: TransactionRequest,
+        from: Address,
+    ) -> Result<PendingTransactionBuilder<AnvilTransport, AnvilNetwork>> {
+        // create a provider, without any `WalletFiller` otherwise there is a bug with impersonations
+        // see: https://github.com/alloy-rs/alloy/issues/1918
+        let anvil_provider = ProviderBuilder::new().on_anvil();
+
+        anvil_provider.anvil_impersonate_account(from).await?;
+        let pending_tx = anvil_provider.send_transaction(tx.from(from)).await?;
+        anvil_provider
+            .anvil_stop_impersonating_account(from)
+            .await?;
+
+        Ok(pending_tx)
     }
 }
